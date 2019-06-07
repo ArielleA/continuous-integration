@@ -991,6 +991,10 @@ def upload_bazel_binary(platform):
     binary_path = "bazel-bin/src/bazel"
     if platform == "windows":
         binary_path = r"bazel-bin\src\bazel"
+    if not os.path.exists(binary_path):
+        raise BuildkiteException(
+            "Could not upload Bazel Under Test, because the binary was missing!"
+        )
     execute_command(["buildkite-agent", "artifact", "upload", binary_path])
 
 
@@ -1181,7 +1185,7 @@ def remote_caching_flags(platform):
     flags += [
         "--experimental_inmemory_jdeps_files",
         "--experimental_inmemory_dotd_files",
-        "--experimental_remote_download_outputs=minimal",
+        "--experimental_remote_download_outputs=toplevel",
     ]
 
     return flags
@@ -1295,7 +1299,7 @@ def rbe_flags(original_flags, accept_cached):
     flags += [
         "--experimental_inmemory_jdeps_files",
         "--experimental_inmemory_dotd_files",
-        "--experimental_remote_download_outputs=minimal",
+        "--experimental_remote_download_outputs=toplevel",
     ]
 
     # Platform flags:
