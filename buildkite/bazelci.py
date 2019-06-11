@@ -197,11 +197,6 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
         "http_config": "https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/pipelines/protobuf-postsubmit.yml",
         "pipeline_slug": "protobuf",
     },
-    "Remote execution": {
-        "git_repository": "https://github.com/bazelbuild/bazel.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/continuous-integration/master/buildkite/pipelines/bazel-remote-execution-postsubmit.yml",
-        "pipeline_slug": "remote-execution",
-    },
     "Skydoc": {
         "git_repository": "https://github.com/bazelbuild/skydoc.git",
         "http_config": "https://raw.githubusercontent.com/bazelbuild/skydoc/master/.bazelci/presubmit.yml",
@@ -363,16 +358,20 @@ DOWNSTREAM_PROJECTS_PRODUCTION = {
 }
 
 DOWNSTREAM_PROJECTS_TESTING = {
-    "Bazel": {
-        "git_repository": "https://github.com/bazelbuild/bazel.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/bazel/master/.bazelci/postsubmit.yml",
-        "pipeline_slug": "bazel-bazel",
+    "Bazel": DOWNSTREAM_PROJECTS_PRODUCTION["Bazel"],
+    "Bazelisk": DOWNSTREAM_PROJECTS_PRODUCTION["Bazelisk"],
+    "Federation": {
+        "git_repository": "https://github.com/fweikert/bazel-federation.git",
+        "http_config": "https://raw.githubusercontent.com/fweikert/bazel-federation/master/.bazelci/presubmit.yml",
+        "pipeline_slug": "bazel-federation",
     },
-    "Bazelisk": {
-        "git_repository": "https://github.com/bazelbuild/bazelisk.git",
-        "http_config": "https://raw.githubusercontent.com/bazelbuild/bazelisk/master/.bazelci/config.yml",
-        "pipeline_slug": "bazelisk",
-    },
+    "rules_docker": DOWNSTREAM_PROJECTS_PRODUCTION["rules_docker"],
+    "rules_go": DOWNSTREAM_PROJECTS_PRODUCTION["rules_go"],
+    "rules_groovy": DOWNSTREAM_PROJECTS_PRODUCTION["rules_groovy"],
+    "rules_kotlin": DOWNSTREAM_PROJECTS_PRODUCTION["rules_kotlin"],
+    "rules_nodejs": DOWNSTREAM_PROJECTS_PRODUCTION["rules_nodejs"],
+    "rules_rust": DOWNSTREAM_PROJECTS_PRODUCTION["rules_rust"],
+    "rules_scala": DOWNSTREAM_PROJECTS_PRODUCTION["rules_scala"],
 }
 
 DOWNSTREAM_PROJECTS = {
@@ -1111,10 +1110,12 @@ def remote_caching_flags(platform):
             # Platform name:
             platform.encode("utf-8")
         ]
-        # Use GCS for caching builds running on GCE.
+        # Use RBE for caching builds running on GCE.
         flags = [
             "--google_default_credentials",
-            "--remote_cache=https://storage.googleapis.com/bazel-untrusted-buildkite-cache",
+            "--remote_cache=remotebuildexecution.googleapis.com",
+            "--remote_instance_name=projects/{}/instances/default_instance".format(CLOUD_PROJECT),
+            "--tls_enabled=true",
         ]
 
     platform_cache_digest = hashlib.sha256()
@@ -1167,6 +1168,7 @@ def common_build_flags(bep_file, platform):
         "--curses=yes",
         "--color=yes",
         "--terminal_columns=143",
+        "--show_timestamps",
         "--verbose_failures",
         "--keep_going",
         "--jobs=" + concurrent_jobs(platform),
@@ -1690,7 +1692,6 @@ def print_project_pipeline(
             h = hash_task_config(task, task_config)
             if h in config_hashes:
                 continue
-            
             config_hashes.add(h)
 
         shards = task_config.get("shards", "1")
